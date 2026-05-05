@@ -24,6 +24,7 @@
     "@sabir7718/log": "latest",
     "axios": "^1.16.0",
     "telegram": "latest",
+    "dotenv": "latest",
     "yt-search": "^2.13.1"
   },
   "devDependencies": {
