@@ -1219,6 +1219,53 @@ Bot: ${sender.bot}
             }
         }
 
+        if (command === "getemoji") {
+
+            const replied = await message.getReplyMessage();
+
+            if (!replied || !replied.message) {
+                return await message.reply({
+                    message: "❌ Reply to a message"
+                });
+            }
+
+            try {
+
+                let out = replied.message;
+
+                if (replied.entities && replied.entities.length > 0) {
+
+                    const customEmojis = replied.entities.filter(
+                        e => e.className === "MessageEntityCustomEmoji"
+                    );
+
+                    if (customEmojis.length < 1) {
+                        return await message.reply({
+                            message: out
+                        });
+                    }
+
+                    out += "\n\n";
+
+                    for (const emo of customEmojis) {
+
+                        out += `(emoji)${emo.documentId}(/emoji)\n`;
+                    }
+
+                }
+
+                await message.reply({
+                    message: out.trim()
+                });
+
+            } catch (e) {
+
+                await message.reply({
+                    message: `❌ ${e.message}`
+                });
+            }
+        }
+
         if (command === "anticall") {
 
             if (!isOwner) {
