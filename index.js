@@ -1231,31 +1231,28 @@ Bot: ${sender.bot}
 
             try {
 
-                let out = replied.message;
+                let text = replied.message;
 
                 if (replied.entities && replied.entities.length > 0) {
 
-                    const customEmojis = replied.entities.filter(
-                        e => e.className === "MessageEntityCustomEmoji"
-                    );
-
-                    if (customEmojis.length < 1) {
-                        return await message.reply({
-                            message: out
-                        });
-                    }
-
-                    out += "\n\n";
+                    const customEmojis = replied.entities
+                        .filter(e => e.className === "MessageEntityCustomEmoji")
+                        .sort((a, b) => b.offset - a.offset);
 
                     for (const emo of customEmojis) {
 
-                        out += `(emoji)${emo.documentId}(/emoji)\n`;
-                    }
+                        const start = emo.offset;
+                        const end = start + emo.length;
 
+                        text =
+                            text.slice(0, start) +
+                            `(emoji)${emo.documentId}(/emoji)` +
+                            text.slice(end);
+                    }
                 }
 
                 await message.reply({
-                    message: out.trim()
+                    message: text
                 });
 
             } catch (e) {
