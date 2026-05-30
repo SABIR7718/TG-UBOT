@@ -1172,6 +1172,53 @@ Bot: ${sender.bot}
             });
         }
 
+        if (command === "emojiid") {
+
+            const replied = await message.getReplyMessage();
+
+            if (!replied) {
+                return await message.reply({
+                    message: "❌ Reply to emoji/sticker"
+                });
+            }
+
+            try {
+
+                let emojiId = null;
+
+                if (replied.media?.document) {
+                    emojiId = replied.media.document.id;
+                }
+
+                if (
+                    replied.entities &&
+                    replied.entities[0] &&
+                    replied.entities[0].documentId
+                ) {
+                    emojiId = replied.entities[0].documentId;
+                }
+
+                if (!emojiId) {
+                    return await message.reply({
+                        message: "❌ Emoji ID not found"
+                    });
+                }
+
+                await message.reply({
+                    message: `🧩 EMOJI ID
+
+🆔 ${emojiId}`
+                });
+
+            } catch (e) {
+
+                await message.reply({
+                    message: `❌ ${e.message}`
+                });
+
+            }
+        }
+
         if (command === "anticall") {
 
             if (!isOwner) {
@@ -1273,17 +1320,27 @@ const S7HaTeSY_server = http.createServer(async (req, res) => {
             time: new Date().toISOString()
         };
 
-        res.writeHead(200, { "Content-Type": "application/json" });
+        res.writeHead(200, {
+            "Content-Type": "application/json"
+        });
         return res.end(JSON.stringify(S7HaTeSY_data, null, 2));
     }
 
     if (req.url === "/health") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ status: "ok" }));
+        res.writeHead(200, {
+            "Content-Type": "application/json"
+        });
+        return res.end(JSON.stringify({
+            status: "ok"
+        }));
     }
 
-    res.writeHead(404, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Not Found" }));
+    res.writeHead(404, {
+        "Content-Type": "application/json"
+    });
+    res.end(JSON.stringify({
+        error: "Not Found"
+    }));
 
 });
 
