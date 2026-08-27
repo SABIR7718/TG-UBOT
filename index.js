@@ -1149,7 +1149,7 @@ Bot: ${sender.bot}
             });
         }
 
-        if (command === "broadcast") {
+        if (command === "s7broadcast") {
             if (!isOwner) return;
             if (!text) return await message.reply({
                 message: "❌ <b>Enter message to broadcast!</b>",
