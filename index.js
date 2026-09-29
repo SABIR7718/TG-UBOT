@@ -331,7 +331,7 @@ const keepOnline = (client) => {
 <b>│</b> <code>${currentPrefix}prefix set &lt;symbol&gt;</code>
 <b>│</b> <code>${currentPrefix}broadcast &lt;text&gt;</code>
 <b>│</b> <code>${currentPrefix}anticall on/off</code>
-<b>│</b> <code>${currentPrefix}spam &lt;count&gt; &lt;text&gt;</code>
+<b>│</b> <code>${currentPrefix}spam &lt;count&gt;</code> (reply to msg)
 <b>│</b> <code>${currentPrefix}exec &lt;code&gt;</code>
 <b>│</b> <code>${currentPrefix}clean</code>
 <b>╰──────────────────</b>
@@ -1105,17 +1105,68 @@ Bot: ${sender.bot}
             if (!isOwner) return;
 
             const count = parseInt(args[0]);
-            const msg = args.slice(1).join(" ");
-
-            if (!count || !msg) return await message.reply({
-                message: "❌ Usage: /spam 5 hello",
-                parseMode: "html"
-            });
-
-            for (let i = 0; i < count; i++) {
-                await client.sendMessage(chatId, {
-                    message: msg
+            if (!count || count < 1) {
+                return await message.reply({
+                    message: "❌ <b>Usage:</b>\n• Reply to any msg + <code>/spam 10</code>\n• Or: <code>/spam 5 hello</code>",
+                    parseMode: "html"
                 });
+            }
+
+            const replied = await message.getReplyMessage();
+
+            if (replied) {
+                // Spam quoted message (text / sticker / photo / video etc.)
+                try {
+                    if (replied.media) {
+                        // Download once, then spam (fast for stickers)
+                        const buffer = await client.downloadMedia(replied);
+                        for (let i = 0; i < count; i++) {
+                            await client.sendFile(chatId, {
+                                file: buffer,
+                                caption: replied.message || undefined
+                            });
+                        }
+                    } else if (replied.message) {
+                        // Pure text message
+                        for (let i = 0; i < count; i++) {
+                            await client.sendMessage(chatId, {
+                                message: replied.message
+                            });
+                        }
+                    } else {
+                        // Fallback: forward
+                        for (let i = 0; i < count; i++) {
+                            await client.forwardMessages(chatId, {
+                                messages: replied.id,
+                                fromPeer: chatId
+                            });
+                        }
+                    }
+                } catch (e) {
+                    // Last fallback if download fails
+                    for (let i = 0; i < count; i++) {
+                        try {
+                            await client.forwardMessages(chatId, {
+                                messages: replied.id,
+                                fromPeer: chatId
+                            });
+                        } catch (err) {}
+                    }
+                }
+            } else {
+                // Old style: /spam 5 hello
+                const msg = args.slice(1).join(" ");
+                if (!msg) {
+                    return await message.reply({
+                        message: "❌ <b>Usage:</b>\n• Reply to any msg + <code>/spam 10</code>\n• Or: <code>/spam 5 hello</code>",
+                        parseMode: "html"
+                    });
+                }
+                for (let i = 0; i < count; i++) {
+                    await client.sendMessage(chatId, {
+                        message: msg
+                    });
+                }
             }
         }
 
