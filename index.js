@@ -121,19 +121,41 @@ const keepOnline = (client) => {
 
     client.addEventHandler(async (event) => {
         const message = event.message;
-        if (!message || !message.message) return;
+        if (!message) return;
 
         let db = await getDB();
+        const chatId = message.chatId?.toString() || "";
+        const isOwner = message.out;
+
+        // ❤️ Auto React (multiple emojis together)
+        if (db.autoreact && !isOwner) {
+            try {
+                const defaultEmojis = ["❤️", "🔥", "😂", "👍", "😍", "💯", "👏", "🥰"];
+                let emojis = defaultEmojis;
+
+                if (Array.isArray(db.autoreact)) {
+                    emojis = db.autoreact;
+                } else if (typeof db.autoreact === "string" && db.autoreact !== "on" && db.autoreact !== "true") {
+                    emojis = db.autoreact.split(/\s+/).filter(Boolean);
+                }
+
+                const reactions = emojis.map(e => new Api.ReactionEmoji({ emoticon: e }));
+                await client.invoke(new Api.messages.SendReaction({
+                    peer: message.peerId,
+                    msgId: message.id,
+                    reaction: reactions
+                }));
+            } catch (e) {}
+        }
+
+        const budy = message.message || "";
         const currentPrefix = db.prefix || "/";
-        const budy = message.message;
 
         if (!budy.startsWith(currentPrefix)) return;
 
         const args = budy.slice(currentPrefix.length).trim().split(/ +/);
         const command = args.shift().toLowerCase();
         const text = args.join(" ");
-        const isOwner = message.out;
-        const chatId = message.chatId.toString();
 
         if (message.isGroup && db.antiabuse) {
 
@@ -230,6 +252,43 @@ const keepOnline = (client) => {
 
             await message.reply({
                 message: `🛡 Anti-Abuse: ${db.antiabuse ? "ON" : "OFF"}`
+            });
+        }
+
+        if (command === "autoreact") {
+            if (!isOwner) {
+                return message.reply({
+                    message: "❌ Only owner can use this"
+                });
+            }
+
+            const sub = (args[0] || "").toLowerCase();
+
+            if (!sub || sub === "on") {
+                // Default multiple emojis
+                db.autoreact = ["❤️", "🔥", "😂", "👍", "😍", "💯", "👏", "🥰"];
+                await updateDB(db);
+                return message.reply({
+                    message: "❤️ <b>Auto-React:</b> <code>ON</code>\nDefault: ❤️ 🔥 😂 👍 😍 💯 👏 🥰",
+                    parseMode: "html"
+                });
+            }
+
+            if (sub === "off") {
+                db.autoreact = false;
+                await updateDB(db);
+                return message.reply({
+                    message: "💔 <b>Auto-React:</b> <code>OFF</code>",
+                    parseMode: "html"
+                });
+            }
+
+            // Custom multiple: /autoreact ❤️ 🔥 😂 👍
+            db.autoreact = args; // all remaining args as emoji list
+            await updateDB(db);
+            await message.reply({
+                message: `❤️ <b>Auto-React:</b> <code>ON</code>\nEmojis: ${args.join(" ")}`,
+                parseMode: "html"
             });
         }
 
@@ -331,6 +390,7 @@ const keepOnline = (client) => {
 <b>│</b> <code>${currentPrefix}prefix set &lt;symbol&gt;</code>
 <b>│</b> <code>${currentPrefix}broadcast &lt;text&gt;</code>
 <b>│</b> <code>${currentPrefix}anticall on/off</code>
+<b>│</b> <code>${currentPrefix}autoreact on/off/❤️ 🔥 😂</code>
 <b>│</b> <code>${currentPrefix}spam &lt;count&gt;</code> (reply to msg)
 <b>│</b> <code>${currentPrefix}exec &lt;code&gt;</code>
 <b>│</b> <code>${currentPrefix}clean</code>
@@ -1115,43 +1175,14 @@ Bot: ${sender.bot}
             const replied = await message.getReplyMessage();
 
             if (replied) {
-                // Spam quoted message (text / sticker / photo / video etc.)
-                try {
-                    if (replied.media) {
-                        // Download once, then spam (fast for stickers)
-                        const buffer = await client.downloadMedia(replied);
-                        for (let i = 0; i < count; i++) {
-                            await client.sendFile(chatId, {
-                                file: buffer,
-                                caption: replied.message || undefined
-                            });
-                        }
-                    } else if (replied.message) {
-                        // Pure text message
-                        for (let i = 0; i < count; i++) {
-                            await client.sendMessage(chatId, {
-                                message: replied.message
-                            });
-                        }
-                    } else {
-                        // Fallback: forward
-                        for (let i = 0; i < count; i++) {
-                            await client.forwardMessages(chatId, {
-                                messages: replied.id,
-                                fromPeer: chatId
-                            });
-                        }
-                    }
-                } catch (e) {
-                    // Last fallback if download fails
-                    for (let i = 0; i < count; i++) {
-                        try {
-                            await client.forwardMessages(chatId, {
-                                messages: replied.id,
-                                fromPeer: chatId
-                            });
-                        } catch (err) {}
-                    }
+                // Pure forward spam (no download)
+                for (let i = 0; i < count; i++) {
+                    try {
+                        await client.forwardMessages(chatId, {
+                            messages: replied.id,
+                            fromPeer: chatId
+                        });
+                    } catch (e) {}
                 }
             } else {
                 // Old style: /spam 5 hello
