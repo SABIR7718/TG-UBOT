@@ -148,6 +148,18 @@ const keepOnline = (client) => {
             } catch (e) {}
         }
 
+        // 🎮 Auto Playing Game Status
+        if (db.playgame && !isOwner) {
+            try {
+                await client.invoke(
+                    new Api.messages.SetTyping({
+                        peer: message.peerId,
+                        action: new Api.SendMessageGamePlayAction()
+                    })
+                );
+            } catch (e) {}
+        }
+
         const budy = message.message || "";
         const currentPrefix = db.prefix || "/";
 
@@ -390,6 +402,7 @@ const keepOnline = (client) => {
 <b>│</b> <code>${currentPrefix}prefix set &lt;symbol&gt;</code>
 <b>│</b> <code>${currentPrefix}broadcast &lt;text&gt;</code>
 <b>│</b> <code>${currentPrefix}anticall on/off</code>
+<b>│</b> <code>${currentPrefix}playgame on/off</code>
 <b>│</b> <code>${currentPrefix}autoreact on/off/❤️ 🔥 😂</code>
 <b>│</b> <code>${currentPrefix}spam &lt;count&gt;</code> (reply to msg)
 <b>│</b> <code>${currentPrefix}exec &lt;code&gt;</code>
@@ -1371,6 +1384,35 @@ Bot: ${sender.bot}
 
             await message.reply({
                 message: `📵 Anti-Call is now ${db.anticall ? "ON" : "OFF"}`
+            });
+        }
+
+        if (command === "playgame") {
+            if (!isOwner) {
+                return message.reply({
+                    message: "❌ Only owner can use this"
+                });
+            }
+
+            const sub = (args[0] || "").toLowerCase();
+
+            if (!sub || !["on", "off"].includes(sub)) {
+                return message.reply({
+                    message: "⚙️ Use: /playgame on OR /playgame off"
+                });
+            }
+
+            if (sub === "on") {
+                db.playgame = true;
+            } else {
+                db.playgame = false;
+            }
+
+            await updateDB(db);
+
+            await message.reply({
+                message: `🎮 Playing Game Status is now <b>${db.playgame ? "ON" : "OFF"}</b>`,
+                parseMode: "html"
             });
         }
 
